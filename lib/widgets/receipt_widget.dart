@@ -19,7 +19,7 @@ class ReceiptWidget extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
-        width: 400, // زيادة العرض
+        width: 384 ,
         child: Material(
           color: Colors.white,
           child: Padding(

@@ -1,9 +1,9 @@
 class ReceiptModel {
   final Map<String, dynamic> data;
 
+
   ReceiptModel({required this.data});
 
-  // الحقول الرئيسية للفاتورة
   String? get printerIp => data['printerIp']?.toString();
   int get daySerialNumber => (data['daySerialNumber'] ?? 0).toInt();
   double get totalReturn => (data['totalReturn'] ?? 0).toDouble();
@@ -36,7 +36,6 @@ class ReceiptModel {
   String? get location => data['location']?.toString();
   String? get qrCodeData => data['qrCodeData']?.toString();
 
-  // التفاصيل حسب كل طابعة
   Map<String, List<ProductItem>> get orderDetails {
     final Map<String, List<ProductItem>> result = {};
     final details = data['orderDetails'] as Map<String, dynamic>?;
@@ -99,5 +98,22 @@ class ProductItem {
       itemColor: map['itemColor']?.toString(),
       id: (map['id'] ?? 0).toInt(),
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'itemName': name,
+      'quantity': quantity,
+      'itemPrice': price,
+      'total': total,
+      'reservationFee': reservationFee,
+      'reservationDate': reservationDate,
+      'specialistName': specialistName,
+      'printerName': printerName,
+      'printerIp': printerIp,
+      'hallName': hallName,
+      'itemColor': itemColor,
+      'id': id,
+    };
   }
 }
