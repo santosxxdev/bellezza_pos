@@ -553,7 +553,7 @@ packages:
     source: hosted
     version: "0.28.0"
   screenshot:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: screenshot
       sha256: "63817697a7835e6ce82add4228e15d233b74d42975c143ad8cfe07009fab866b"

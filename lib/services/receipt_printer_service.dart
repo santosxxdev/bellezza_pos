@@ -1,35 +1,21 @@
-import 'dart:typed_data';
 import 'dart:developer';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_thermal_printer/flutter_thermal_printer.dart';
-import 'package:image/image.dart' as AnotherImage;
+import 'package:image/image.dart' as img;
+import 'package:screenshot/screenshot.dart';
 import '../model/receipt_model.dart';
 import '../widgets/receipt_widget.dart';
 import '../widgets/service_receipt_widget.dart';
 
 class ReceiptPrinter {
-  static AnotherImage.Image removeAlpha(Uint8List bytes) {
-    final decoded = AnotherImage.decodeImage(bytes)!;
-    final notAlpha = AnotherImage.Image(
-      width: decoded.width,
-      height: decoded.height,
-    );
-    for (int y = 0; y < decoded.height; y++) {
-      for (int x = 0; x < decoded.width; x++) {
-        final pixel = decoded.getPixel(x, y);
-        notAlpha.setPixelRgba(x, y, pixel.r, pixel.g, pixel.b, 255);
-      }
-    }
-    final img = AnotherImage.copyResize(notAlpha, width: 576);
-    return img;
-  }
+  static int imageHeight = 0;
+  static final ScreenshotController _screenshotController = ScreenshotController();
 
   static Future<void> printReceipt(
       Map<String, dynamic> data,
       BuildContext context,
-      {Uint8List? logoImageBytes}) async {
-    final flutterPrinter = FlutterThermalPrinter.instance;
-
+      ) async {
     try {
       final receiptModel = ReceiptModel(data: data);
       final mainPrinterIp =
@@ -48,35 +34,23 @@ class ReceiptPrinter {
         context: context,
         bytesBuilder: () async {
           log("🖨️ طباعة الفاتورة الأساسية على $mainPrinterIp");
-
-          List<int> receiptBytes = await flutterPrinter.screenShotWidget(
+          final receiptBytes = await screenShotWidget(
             context,
             generator: generator,
             widget: ReceiptWidget(receiptModel: receiptModel),
           );
-
-          // إذا فيه شعار، نضيفه بعد إزالة الشفافية
-          if (logoImageBytes != null) {
-            final logoImg = removeAlpha(logoImageBytes);
-            receiptBytes.addAll(generator.imageRaster(
-              logoImg,
-              align: PosAlign.center,
-              highDensityVertical: true,
-              highDensityHorizontal: true,
-            ));
-          }
-
           return [...receiptBytes, ...generator.cut()];
         },
       );
 
-      // 🧾 طباعة فواتير الخدمات
+      // 🧾 2️⃣ طباعة فواتير الخدمات
       for (final entry in receiptModel.orderDetails.entries) {
         final printerIp = entry.key;
         final serviceItems = entry.value;
 
         if (printerIp == mainPrinterIp) continue;
 
+        // تجهيز موديل جديد بخدمات هذا الـ IP فقط
         final serviceData = Map<String, dynamic>.from(data);
         serviceData['orderDetails'] = {
           printerIp: serviceItems.map((item) => item.toMap()).toList()
@@ -90,8 +64,7 @@ class ReceiptPrinter {
           context: context,
           bytesBuilder: () async {
             log("🧾 طباعة فاتورة الخدمة على $printerIp");
-
-            List<int> serviceBytes = await flutterPrinter.screenShotWidget(
+            final serviceBytes = await screenShotWidget(
               context,
               generator: generator,
               widget: ServiceReceiptWidget(
@@ -99,17 +72,6 @@ class ReceiptPrinter {
                 printerIp: printerIp,
               ),
             );
-
-            if (logoImageBytes != null) {
-              final logoImg = removeAlpha(logoImageBytes);
-              serviceBytes.addAll(generator.imageRaster(
-                logoImg,
-                align: PosAlign.center,
-                highDensityVertical: true,
-                highDensityHorizontal: true,
-              ));
-            }
-
             return [...serviceBytes, ...generator.cut()];
           },
         );
@@ -122,6 +84,7 @@ class ReceiptPrinter {
     }
   }
 
+  // 🔧 دالة الطباعة على IP محدد
   static Future<void> _printToPrinter({
     required String ip,
     required BuildContext context,
@@ -152,5 +115,96 @@ class ReceiptPrinter {
         SnackBar(content: Text(message)),
       );
     }
+  }
+
+  // 📸 Method to capture widget as thermal printer bytes
+  static Future<Uint8List> screenShotWidget(
+      BuildContext context, {
+        required Widget widget,
+        Duration delay = const Duration(milliseconds: 100),
+        int? customWidth,
+        PaperSize paperSize = PaperSize.mm80,
+        Generator? generator,
+      }) async {
+    // انتظر قليلاً لضمان render الـ widget
+    await Future.delayed(delay);
+
+    // capture الصورة باستخدام الإصدار 3.0.0
+    final Uint8List? image = await _screenshotController.captureFromWidget(
+      Material(
+        color: Colors.white,
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: widget,
+        ),
+      ),
+      pixelRatio: 3.0,
+      context: context, // إضافة context في الإصدار 3.0.0
+    );
+
+    if (image == null) {
+      throw Exception("فشل في capture الصورة");
+    }
+
+    Generator? generator0;
+    if (generator == null) {
+      final profile = await CapabilityProfile.load();
+      generator0 = Generator(paperSize, profile);
+    } else {
+      generator0 = generator;
+    }
+
+    img.Image? imagebytes = img.decodeImage(image);
+
+    if (customWidth != null) {
+      final width = _makeDivisibleBy8(customWidth);
+      imagebytes = img.copyResize(imagebytes!, width: width);
+    }
+
+    imagebytes = _buildImageRasterAvaliable(imagebytes!);
+
+    imagebytes = img.grayscale(imagebytes);
+    imageHeight = imagebytes.height;
+    final totalheight = imagebytes.height;
+    final totalwidth = imagebytes.width;
+
+    int imageChunkHeight = 150;
+    double exactChunks = totalheight / imageChunkHeight;
+    final timestoCut =
+        exactChunks.floor() + (exactChunks - exactChunks.floor() > 0.1 ? 1 : 0);
+    List<int> bytes = [];
+
+    for (var i = 0; i < timestoCut; i++) {
+      final croppedImage = img.copyCrop(
+        imagebytes,
+        x: 0,
+        y: i * imageChunkHeight,
+        width: totalwidth,
+        height: imageChunkHeight,
+      );
+      final raster = generator0.imageRaster(
+        croppedImage,
+        imageFn: PosImageFn.bitImageRaster,
+      );
+      bytes += raster;
+    }
+
+    return Uint8List.fromList(bytes);
+  }
+
+  static int _makeDivisibleBy8(int number) {
+    if (number % 8 == 0) {
+      return number;
+    }
+    return number + (8 - (number % 8));
+  }
+
+  static img.Image _buildImageRasterAvaliable(img.Image image) {
+    final avaliable = image.width % 8 == 0;
+    if (avaliable) {
+      return image;
+    }
+    final newWidth = _makeDivisibleBy8(image.width);
+    return img.copyResize(image, width: newWidth);
   }
 }

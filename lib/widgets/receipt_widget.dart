@@ -18,8 +18,8 @@ class ReceiptWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Container(
-        width: 384 ,
+      child: SizedBox(
+        width: 192,
         child: Material(
           color: Colors.white,
           child: Padding(
@@ -50,16 +50,14 @@ class ReceiptWidget extends StatelessWidget {
       ),
     );
   }
-
   Widget _buildHeaderWithLogo() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // اللوجو من بيانات الشركة
         if (_getCompanyData()['imageUrl'] != null && _getCompanyData()['imageUrl'].toString().isNotEmpty)
           Container(
-            height: 100, // حجم معتدل للوجو
+            height: 60, // تم تصغير حجم اللوجو
             child: Center(
               child: _buildCompanyLogo(
                   _getFullImageUrl(_getCompanyData()['imageUrl']),
@@ -67,14 +65,11 @@ class ReceiptWidget extends StatelessWidget {
               ),
             ),
           ),
-
-        const SizedBox(height: 8),
-
-        // اسم الشركة
+        const SizedBox(height: 6),
         Text(
           _getCompanyData()['ar'] ?? receiptModel.vendorBranchName ?? 'المتجر',
           style: const TextStyle(
-            fontSize: 24, // حجم معتدل
+            fontSize: 18, // تم تصغير الخط
             fontWeight: FontWeight.bold,
             height: 1.2,
             color: Colors.black87,
@@ -83,15 +78,12 @@ class ReceiptWidget extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
-
-        const SizedBox(height: 6),
-
-        // العنوان
+        const SizedBox(height: 4),
         if (_getCompanyData()['location'] != null)
           Text(
             'العنوان: ${_getCompanyData()['location']}',
             style: const TextStyle(
-              fontSize: 18, // حجم معتدل
+              fontSize: 14, // تم تصغير الخط
               height: 1.2,
               color: Colors.black,
               fontWeight: FontWeight.bold,
@@ -100,12 +92,9 @@ class ReceiptWidget extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-
-        const SizedBox(height: 10),
-
-        // نوع الفاتورة
+        const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.black, width: 2),
             borderRadius: BorderRadius.circular(8),
@@ -114,7 +103,7 @@ class ReceiptWidget extends StatelessWidget {
           child: const Text(
             'فاتورة ضريبية مبسطة',
             style: TextStyle(
-              fontSize: 20, // حجم معتدل
+              fontSize: 16, // تم تصغير الخط
               fontWeight: FontWeight.bold,
               height: 1.2,
               color: Colors.black87,
@@ -133,33 +122,28 @@ class ReceiptWidget extends StatelessWidget {
 
   String _getFullImageUrl(String imagePath) {
     final baseUrl = _baseUrl;
-
     if (imagePath.startsWith('http')) {
       return imagePath;
     }
-
     if (imagePath.startsWith('/')) {
       return '$baseUrl${imagePath.substring(1)}';
     }
-
     return '$baseUrl$imagePath';
   }
 
   Widget _buildCompanyLogo(String imageUrl, String companyName) {
     return SizedBox(
-      width: 150, // حجم معتدل للوجو
-      height: 70,
+      width: 100, // تم تصغير الحجم
+      height: 40,
       child: FutureBuilder<String?>(
         future: _getCachedLogoPath(imageUrl, companyName),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLogoPlaceholder(companyName);
           }
-
           if (snapshot.hasData && snapshot.data != null) {
             return _buildLogoImage(File(snapshot.data!), companyName);
           }
-
           return _buildNetworkLogoWithCache(imageUrl, companyName);
         },
       ),
@@ -171,14 +155,12 @@ class ReceiptWidget extends StatelessWidget {
       final prefs = await SharedPreferences.getInstance();
       final cachedPath = prefs.getString('cached_logo_path');
       final cachedUrl = prefs.getString('cached_logo_url');
-
       if (cachedPath != null && cachedUrl == imageUrl) {
         final file = File(cachedPath);
         if (await file.exists()) {
           return cachedPath;
         }
       }
-
       return await _downloadAndCacheLogo(imageUrl, companyName);
     } catch (e) {
       return null;
@@ -210,8 +192,8 @@ class ReceiptWidget extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 140,
-          height: 60,
+          width: 100, // تم تصغير الحجم
+          height: 40,
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300, width: 1),
             borderRadius: BorderRadius.circular(6),
@@ -234,8 +216,8 @@ class ReceiptWidget extends StatelessWidget {
   Widget _buildNetworkLogoWithCache(String imageUrl, String companyName) {
     _downloadAndCacheLogo(imageUrl, companyName);
     return Container(
-      width: 140,
-      height: 60,
+      width: 100, // تم تصغير الحجم
+      height: 40,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300, width: 1),
         borderRadius: BorderRadius.circular(6),
@@ -252,10 +234,11 @@ class ReceiptWidget extends StatelessWidget {
     );
   }
 
+
   Widget _buildLogoPlaceholder(String companyName) {
     return Container(
-      width: 140,
-      height: 60,
+      width: 100,
+      height: 40,
       decoration: BoxDecoration(
         color: Colors.grey[200],
         border: Border.all(color: Colors.grey.shade300, width: 1),
@@ -265,7 +248,7 @@ class ReceiptWidget extends StatelessWidget {
         child: Text(
           companyName.split(' ').take(2).join(' '),
           style: const TextStyle(
-            fontSize: 16, // حجم معتدل
+            fontSize: 12, // تم تصغير الخط
             color: Colors.grey,
             fontWeight: FontWeight.bold,
           ),
@@ -276,6 +259,7 @@ class ReceiptWidget extends StatelessWidget {
       ),
     );
   }
+
 
   Widget _buildInvoiceInfo() {
     return Directionality(
@@ -579,20 +563,20 @@ class ReceiptWidget extends StatelessWidget {
         children: [
           const Text(
             'رمز الاستعلام',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           QrImageView(
             data: receiptModel.qrCodeData!,
             version: QrVersions.auto,
-            size: 140.0, // حجم معتدل لل QR
+            size: 90.0, // تم تصغير حجم الـ QR
             foregroundColor: Colors.black,
           ),
           const SizedBox(height: 8),
           Text(
             receiptModel.qrCodeData!,
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+            style: const TextStyle(fontSize: 10, color: Colors.grey),
             textAlign: TextAlign.center,
           ),
         ],
