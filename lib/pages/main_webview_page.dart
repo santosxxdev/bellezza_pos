@@ -1,7 +1,6 @@
 import 'package:bellezza_pos/model/receipt_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'dart:convert';
 import 'package:bellezza_pos/services/shared_preferences_service.dart';
 import 'package:bellezza_pos/pages/base_url_settings_page.dart';
 import '../services/receipt_printer_service.dart';
@@ -342,50 +341,6 @@ class _MainWebViewPageState extends State<MainWebViewPage> {
     }
   }
 
-  void _printDetailedData(Map<String, dynamic> data) {
-    print("📊 تفاصيل البيانات المستلمة:");
-
-    // طباعة بيانات الفاتورة الأساسية
-    print("📄 بيانات الفاتورة:");
-    print("   - رقم الفاتورة: ${data['code'] ?? 'N/A'}");
-    print("   - الإجمالي: ${data['total'] ?? 'N/A'}");
-    print("   - الضريبة: ${data['tax'] ?? 'N/A'}");
-    print("   - العميل: ${data['clientName'] ?? 'N/A'}");
-    print("   - الكاشير: ${data['cashierName'] ?? 'N/A'}");
-    print("   - الفرع: ${data['vendorBranchName'] ?? 'N/A'}");
-    print("   - طريقة الدفع: ${data['paymethodName'] ?? 'N/A'}");
-
-    // طباعة بيانات الشركة إذا موجودة
-    if (data.containsKey('Company') && data['Company'] is Map) {
-      final company = data['Company'] as Map;
-      print("🏢 بيانات الشركة:");
-      print("   - الاسم: ${company['ar'] ?? 'N/A'}");
-      print("   - الهاتف: ${company['phoneNumber'] ?? 'N/A'}");
-      print("   - العنوان: ${company['location'] ?? 'N/A'}");
-      print("   - اللوجو: ${company['imageUrl'] ?? 'N/A'}");
-      print("   - سياسة الاسترجاع: ${company['cancellationPolicy'] ?? 'N/A'}");
-    }
-
-    // طباعة تفاصيل الطلبات
-    if (data.containsKey('orderDetails') && data['orderDetails'] is Map) {
-      final orderDetails = data['orderDetails'] as Map;
-      print("🛒 تفاصيل الطلبات:");
-      orderDetails.forEach((printerIp, items) {
-        print("   - طابعة: $printerIp");
-        if (items is List) {
-          for (var item in items) {
-            print("     * ${item['itemName']} - الكمية: ${item['quantity']} - السعر: ${item['itemPrice']} - الإجمالي: ${item['total']}");
-          }
-        }
-      });
-    }
-
-    // طباعة QR Code إذا موجود
-    if (data['qrCodeData'] != null) {
-      print("🔗 رمز QR: ${data['qrCodeData']}");
-    }
-  }
-
 
   Future<void> _setupPrintAppHandler(InAppWebViewController c) async {
     try {
@@ -506,36 +461,32 @@ class _MainWebViewPageState extends State<MainWebViewPage> {
 
   Future<void> _printReceivedData(Map<String, dynamic> data) async {
     try {
-      // التحقق من وجود printerIp في البيانات
       final printerIp = data['printerIp']?.toString();
-
       if (printerIp == null || printerIp.isEmpty) {
-        _showErrorSnackbar("❌ لم يتم تحديد عنوان الطابعة في البيانات");
+        _showErrorSnackbar("❌ لا يوجد عنوان IP للطابعة في البيانات");
         return;
       }
 
-      print("🖨️ بدء الطباعة على الطابعة: $printerIp");
-
+      print("🖨️ إرسال الفاتورة إلى الطابعة: $printerIp");
       await ReceiptPrinter.printReceipt(data, context);
 
-      // إشعار نجاح الطباعة
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
-              children: [
+              children: const [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 8),
-                Text('تم إرسال الفاتورة للطابعة $printerIp بنجاح'),
+                Text('✅ تم إرسال الفاتورة للطابعة بنجاح'),
               ],
             ),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
+            duration: Duration(seconds: 2),
           ),
         );
       }
     } catch (e) {
-      _showErrorSnackbar("خطأ في الطباعة: $e");
+      _showErrorSnackbar("❌ خطأ أثناء الطباعة: $e");
     }
   }
 
